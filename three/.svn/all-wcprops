@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 96
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three
+END
+three.js
+K 25
+svn:wc:ra_dav:version-url
+V 105
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three/three.js
+END
+Detector.js
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three/Detector.js
+END
+three.min.js
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three/three.min.js
+END
+OBJMTLLoader.js
+K 25
+svn:wc:ra_dav:version-url
+V 112
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three/OBJMTLLoader.js
+END
+OBJLoader.js
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three/OBJLoader.js
+END
+MTLLoader.js
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three/MTLLoader.js
+END
+OrbitControls.js
+K 25
+svn:wc:ra_dav:version-url
+V 113
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three/OrbitControls.js
+END
+TrackballControls.js
+K 25
+svn:wc:ra_dav:version-url
+V 117
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three/TrackballControls.js
+END
+tween.min.js
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three/tween.min.js
+END
+ColladaLoader.js
+K 25
+svn:wc:ra_dav:version-url
+V 113
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/three/ColladaLoader.js
+END

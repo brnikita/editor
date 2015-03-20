@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 111
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/wysihtml5/src/quirks
+END
+ensure_proper_clearing.js
+K 25
+svn:wc:ra_dav:version-url
+V 137
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/wysihtml5/src/quirks/ensure_proper_clearing.js
+END
+get_correct_inner_html.js
+K 25
+svn:wc:ra_dav:version-url
+V 137
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/wysihtml5/src/quirks/get_correct_inner_html.js
+END
+redraw.js
+K 25
+svn:wc:ra_dav:version-url
+V 121
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/wysihtml5/src/quirks/redraw.js
+END
+clean_pasted_html.js
+K 25
+svn:wc:ra_dav:version-url
+V 132
+/svn2/svn_zeppelin-cms/!svn/ver/11406/branches/recorder/branches/2015_global/static/js/ext/wysihtml5/src/quirks/clean_pasted_html.js
+END
