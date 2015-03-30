@@ -1,6 +1,9 @@
 (function () {
     var editor = $('#editor'),
-        styles = new Styles($('#button-toolbar .styles'));
+        fonts = ['Serif', 'Arial', 'Courier', 'Courier New', 'Comic Sans MS',
+            'Helvetica', 'Impact', 'Lucida Grande', 'Lucida Sans', 'Tahoma', 'Times', 'Times New Roman', 'Verdana'],
+        styles = new Styles($('#button-toolbar .styles')),
+        lastLink;
 
     function makeCloseDialog(elem, saveCallback, cancelCallback, dontSaveCallback) {
         elem = $(elem);
@@ -24,8 +27,7 @@
                 $('#editor').html(localStorage.getItem('editorContent'));
                 $('.closeDialog').hide();
                 $('.button-toolbar').hide();
-            }
-            ;
+            };
         makeCloseDialog(dialogElem, save, cancel, dontSave);
     }
 
@@ -47,13 +49,10 @@
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
                 "Accept-Language": "ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3, ru-RU,ru;q=0.8,en-US;q=0.6,en;q=0.4",
-                //"Accept-Encoding": "gzip, deflate",
                 "Content-Type": "application/json; charset=UTF-8",
                 "X-Requested-With": "XMLHttpRequest, XMLHttpRequest",
                 "Pragma": "no-cache",
                 "Cache-Control": "no-cache"
-                //"Content-Length": "202",
-                //"Connection": "keep-alive"
             },
             success: function () {
                 console.log('success: ' + bookmarkId);
@@ -82,10 +81,13 @@
                 bookmark.parentsUntil('.transcriptParagraph').each(function () {
                     bookmark.children('.bookmarkBody').contents().wrap(createWrapper(this));
                 });
+
                 saveBookmark($(this).find('.bookmarkBody').html(), $(this).data('bookmarkid'));
             });
         });
+
         localStorage.setItem('editorContent', $('#editor').html());
+        toast.notify({message: "Transcript was successfully saved."})
     }
 
     function rgbToHex(rgb) {
@@ -95,6 +97,7 @@
         if (r.length == 1) r = '0' + r;
         if (g.length == 1) g = '0' + g;
         if (b.length == 1) b = '0' + b;
+
         return "#" + (r + g + b).toUpperCase();
     }
 
@@ -109,6 +112,7 @@
             blackColors,
             tr,
             i;
+
         $.getJSON('/static/js/ext/colors.json', function (data) {
             mainColors = data['mainblock'];
             lastColors = data['sideblock'];
@@ -133,12 +137,37 @@
         cpDiv.append(lastColorTable);
         cpDiv.append(mainColorTable);
         cpDiv.append(blackColorTable);
-        //cpDiv.append($('<span class="opacity-title">Opacity</span>'));
-        //cpDiv.append($('<input type="text" value="100"/>'));
-        //!bgColor && cpDiv.append($('<div id="slider1"></div>'));
-        //bgColor && cpDiv.append($('<div id="slider2"></div>'));
+
+        cpDiv.append($('<span class="opacity-title">Opacity</span>'));
+        cpDiv.append($('<input type="text" value="100"/>'));
+        !bgColor && cpDiv.append($('<div id="slider1"></div>'));
+        bgColor && cpDiv.append($('<div id="slider2"></div>'));
 
         initColorPick();
+    }
+
+    function refreshProps() {
+        var target = window.getSelection().anchorNode.parentNode,
+            tgStyles = window.getComputedStyle(target),
+            fontFamily = tgStyles.fontFamily.split(', '),
+            BreakException = {}
+            ;
+
+        $('.font-sizes-group').children('a').html(parseInt(tgStyles.fontSize) + '<b class="caret"></b>');
+        try {
+            fontFamily.forEach(function (font) {
+                font = font.split("'").join('');
+                if ($.inArray(font, fonts) >= 0) {
+                    $('.fonts-list-group').children('a').html(font + '<b class="caret"></b>');
+                    throw BreakException;
+                }
+            });
+        } catch (e) {
+            if (e != BreakException) throw e;
+        }
+        $('.font-color > a span').css('background-color', tgStyles.color);
+        $('.background-color > a span').css('background-color', $(target).parents('*[style^="background"]').css('background-color') || tgStyles.backgroundColor);
+        $('.add-link-input').val('');
     }
 
     function initFocus() {
@@ -161,23 +190,29 @@
             transcriptButton.removeClass('selected');
         });
         $('.transcript .close-btn').click(function () {
-            closeDialog.show();
+            if (!($('#editor').html() === localStorage.getItem('editorContent'))) {
+                closeDialog.show();
+            } else {
+                toolbar.hide();
+                closeDialog.hide();
+            }
+
         });
         $('#cancelButton').click(function () {
+            $('#editor').html(localStorage.getItem('editorContent'));
             toolbar.hide();
             closeDialog.hide();
         });
         $('#saveButton').click(function () {
-            saveTranscript();
+            if (!($('#editor').html() === localStorage.getItem('editorContent'))) {
+                saveTranscript();
+            }
             $('.closeDialog').hide();
-            $('.button-toolbar').hide();
         });
     }
 
     function initFonts() {
-        var fonts = ['Serif', 'Arial', 'Arial Black', 'Courier', 'Courier New', 'Comic Sans MS',
-                'Helvetica', 'Impact', 'Lucida Grande', 'Lucida Sans', 'Tahoma', 'Times', 'Times New Roman', 'Verdana'],
-            fontTarget = $('.fonts-list'),
+        var fontTarget = $('.fonts-list'),
             currentFont,
             content;
 
@@ -186,7 +221,7 @@
         });
         $('.font-item').click(function () {
             currentFont = $(this).css('font-family').split('\'').join('');
-            //$(this).parents('.fonts-list-group').children('a').html(currentFont+ '<b class="caret"></b>');
+            $(this).parents('.fonts-list-group').children('a').html(currentFont + '<b class="caret"></b>');
 
             $('.fonts-list-group > a span').html(currentFont + '<b class="caret"></b>');
             if (!window.getSelection().toString().length) {
@@ -199,11 +234,11 @@
 
                 });
             }
-        })
+        });
     }
 
     function initColorPick() {
-        $('.color-palette-group.font-color td, .color-palette-group.background-color td').on('click', 'a', function () {
+        $('.color-palette-group.font-color td, .color-palette-group.background-color td').on('click', 'a', function (e) {
             var color = $(this).parent().css('background-color'),
                 parents = $(this).parents('.color-palette-group')
                 ;
@@ -219,22 +254,20 @@
         var currentSize,
             selection = window.getSelection(),
             selectedText,
-            wrapper,
             text,
-            range,
             start,
             end,
             startText,
             endText,
             startId,
             endId,
-            textBodies = $('.bookmarkBody').children(),
             content,
             bookmarkNode,
             bookmarkBody,
             anchorNode,
             focusNode,
-            selectedRange = document.createRange()
+            selectedRange = document.createRange(),
+            spanRe = /<span style="font-size:\d+px">([\s\w\S\W.]+)<\/span>/
             ;
 
         initFocus();
@@ -266,18 +299,16 @@
                 end = window.getSelection().getRangeAt(0).endOffset;
 
                 startId = $(selection.anchorNode).parents('.oneBookmark').data('bookmarkid');
-                endId = $(selection.focusNode).parents('.oneBookmark').data('bookmarkid');
+                endId = $(selection.focusNode).parents('.oneBookmark').data('bookmarkid') || $(selection.focusNode).prev().children(':last-child').data('bookmarkid') + 1;
 
                 for (var i = startId + 1; i <= endId - 1; i++) {
                     bookmarkNode = $('.oneBookmark[data-bookmarkid=' + i + '] .bookmarkBody');
-
-
-                    if (bookmarkNode.find('span[style^=font-size]').length) {
-                        bookmarkBody = bookmarkNode.find('span[style^=font-size]').html();
-                    } else {
-                        bookmarkBody = bookmarkNode.html();
+                    bookmarkBody = bookmarkNode.html();
+                    if (bookmarkBody.match(spanRe)) {
+                        bookmarkBody = bookmarkBody.replace(spanRe, bookmarkBody.match(spanRe)[1]);
                     }
                     content = '<span style="font-size:' + currentSize + '">' + bookmarkBody + '</span>';
+
                     bookmarkNode.html(content);
                 }
 
@@ -285,55 +316,57 @@
                 if (startId != endId) {
                     bookmarkNode = $('.oneBookmark[data-bookmarkid=' + startId + '] .bookmarkBody');
 
-                    if (bookmarkNode.find('span[style^=font-size]').length) {
-                        bookmarkBody = bookmarkNode.find('span[style^=font-size]').html();
-                    } else {
-                        bookmarkBody = bookmarkNode.html();
+                    bookmarkBody = bookmarkNode.html();
+                    if (bookmarkBody.slice(start).match(spanRe)) {
+                        console.log(bookmarkBody.slice(start).match(spanRe));
+                        bookmarkBody = bookmarkBody.replace(spanRe, bookmarkBody.match(spanRe)[1]);
                     }
 
                     startText = $(window.getSelection().anchorNode).text().slice(start);
 
-                    content = bookmarkBody.replace(startText, '<span style="font-size:' + currentSize + '">' + startText + '</span>');
+                    content = bookmarkBody.replace(startText, '<span style="font-size:' + currentSize + '">' + startText);
+                    content += '</span>';
                     bookmarkNode.html(content);
                     //------------------------------------
                     bookmarkNode = $('.oneBookmark[data-bookmarkid=' + endId + '] .bookmarkBody');
 
-                    if (bookmarkNode.find('span[style^=font-size]').length) {
-                        bookmarkBody = bookmarkNode.find('span[style^=font-size]').html();
-                    } else {
-                        bookmarkBody = bookmarkNode.html();
+                    bookmarkBody = bookmarkNode.html();
+                    if (bookmarkBody.match(spanRe)) {
+                        bookmarkBody = bookmarkBody.replace(spanRe, bookmarkBody.match(spanRe)[1]);
                     }
 
                     endText = $(window.getSelection().focusNode).text().slice(0, end);
 
-                    content = bookmarkBody.replace(endText, '<span style="font-size:' + currentSize + '">' + endText + '</span>');
+                    content = bookmarkBody.replace(endText, endText + '</span>');
+                    content = '<span style="font-size:' + currentSize + '">' + content;
                     bookmarkNode.html(content);
 
                 } else {
                     bookmarkNode = $('.oneBookmark[data-bookmarkid=' + startId + '] .bookmarkBody');
 
-                    if (bookmarkNode.find('span[style^=font-size]').length) {
-                        bookmarkBody = bookmarkNode.find('span[style^=font-size]').html();
-                    } else {
-                        bookmarkBody = bookmarkNode.html();
+                    bookmarkBody = bookmarkNode.html();
+                    if (bookmarkBody.match(spanRe)) {
+                        bookmarkBody = bookmarkBody.replace(spanRe, bookmarkBody.match(spanRe)[1]);
                     }
 
-                    startText = $(window.getSelection().anchorNode).text().slice(start, end);
+                    startText = $(window.getSelection().anchorNode).parents('.bookmarkBody').text().slice(start, (start > end) ? (start + end) : end);
 
                     content = bookmarkBody.replace(startText, '<span style="font-size:' + currentSize + '">' + startText + '</span>');
                     bookmarkNode.html(content);
                 }
             }
-            selectedRange.setStart(anchorNode, start+41);
-            selectedRange.setEnd(focusNode, end+10);
+            selectedRange.setStart(window.getSelection().anchorNode, 1);
+            selectedRange.setEnd(window.getSelection().focusNode, 1);
             selection.removeAllRanges();
             selection.addRange(selectedRange);
+
         });
     }
 
     String.prototype.splice = function (idx, rem, s) {
         return (this.slice(0, idx) + s + this.slice(idx + Math.abs(rem)));
     };
+
     Object.defineProperty(
         Object.prototype,
         'renameProperty',
@@ -352,6 +385,7 @@
             }
         }
     );
+
     function extendObject(toObj, fromObj) {
         for (var prop in fromObj) {
             if (!toObj.hasOwnProperty(prop)) {
@@ -360,16 +394,23 @@
         }
     }
 
+    function clone(obj) {
+        if (null == obj || "object" != typeof obj) return obj;
+        var copy = obj.constructor();
+        for (var attr in obj) {
+            if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
+        }
+        return copy;
+    }
+
     function Styles(container) {
         var savedStyles = JSON.parse(window.localStorage.getItem('savedStyles'));
 
         this._defaultStyles = {
-            "Normal": '<span></span>',
-            "Title": '<span style="font-size: 22px; font-weight: bold"></span>',
-            "Subtitle": '<span style="font-size: 16px; font-style: italic"></span>',
-            "Heading 1": '<span style="font-size: 20px"></span>',
-            "Heading 2": '<span style="font-size: 18px"></span>',
-            "Heading 3": '<span style="font-size: 16px"></span>'
+            "Normal": '<span style="font-size:14px"><span style="font-weight: none"><span style="font-style: none"></span></span></span>',
+            "Title": '<span style="font-size:18px"><span style="font-weight: bold"></span></span>',
+            "Subtitle": '<span style="font-size:14px"><span style="font-style: italic"></span></span>',
+            "Heading 3": '<span style="font-size:12px"><span style="color: #666666"></span></span>'
         };
         this._styles = {};
         this._container = $(container);
@@ -377,7 +418,6 @@
         extendObject(this._styles, this._defaultStyles);
         extendObject(this._styles, savedStyles);
     }
-
 
     Styles.prototype.stylize = function (name) {
         var selection,
@@ -392,6 +432,7 @@
             bookmarkBody,
             self = this,
             wrapper = $(self._styles[name]),
+            selectedRange = document.createRange(),
             wrappedText;
 
         selection = window.getSelection();
@@ -400,24 +441,18 @@
         end = selection.getRangeAt(0).endOffset;
 
         startId = $(selection.anchorNode).parents('.oneBookmark').data('bookmarkid');
-        endId = $(selection.focusNode).parents('.oneBookmark').data('bookmarkid');
+        endId = $(selection.focusNode).parents('.oneBookmark').data('bookmarkid') || $(selection.focusNode).prev().children(':last-child').data('bookmarkid') + 1;
 
-        if (!selection.toString().length) {
-            //bookmarkNode = $('.oneBookmark[data-bookmarkid=' + startId + '] .bookmarkBody');
-            //bookmarkBody = bookmarkNode.html();
-            //
-            //wrappedText = wrapper.clone();
-            //
-            //bookmarkBody = bookmarkBody.splice(start, 0, wrappedText[0].outerHTML);
-            //bookmarkNode.html(bookmarkBody);
-        } else {
+        if (selection.toString().length) {
             for (var i = startId + 1; i <= endId - 1; i++) {
                 bookmarkNode = $('.oneBookmark[data-bookmarkid=' + i + '] .bookmarkBody');
+                bookmarkNode.html(bookmarkNode.text());
                 bookmarkNode.contents().wrapAll(wrapper);
             }
             //    Need to change
             if (startId != endId) {
                 bookmarkNode = $('.oneBookmark[data-bookmarkid=' + startId + '] .bookmarkBody');
+                bookmarkNode.html(bookmarkNode.text());
                 bookmarkBody = bookmarkNode.html();
 
                 startText = $(selection.anchorNode).text().slice(start);
@@ -429,6 +464,7 @@
                 bookmarkNode.html(content);
                 //------------------------------------
                 bookmarkNode = $('.oneBookmark[data-bookmarkid=' + endId + '] .bookmarkBody');
+                bookmarkNode.html(bookmarkNode.text());
                 bookmarkBody = bookmarkNode.html();
 
                 endText = $(selection.focusNode).text().slice(0, end);
@@ -441,6 +477,7 @@
 
             } else {
                 bookmarkNode = $('.oneBookmark[data-bookmarkid=' + startId + '] .bookmarkBody');
+                bookmarkNode.html(bookmarkNode.text());
                 bookmarkBody = bookmarkNode.html();
 
                 startText = $(selection.anchorNode).text().slice(start, end);
@@ -456,19 +493,17 @@
 
     Styles.prototype.addStyle = function (name) {
         var child = $(window.getSelection().anchorNode),
-            parents = child.parentsUntil('.bookmarkBody'),
+            parents = child.parentsUntil('.transcriptParagraph').not('.oneBookmark, .bookmarkBody'),
             wrapper = $('<span> </span>'),
             li = $('<li data-name="' + name + '" class="custom style-picker"><span></span><a></a><span class="icon-pencil"></span><span class="icon-trash"></span></li>'),
             self = this
             ;
         parents.each(function () {
             wrapper.contents().wrap($(this).clone().empty());
-            console.log($(this).clone().empty()[0].outerHTML);
-            console.log(wrapper);
         });
         //wrapper = $(wrapper[0].outerHTML);
         self._styles[name] = wrapper[0].outerHTML;
-        if (wrapper.find(':not(:has(*))').length){
+        if (wrapper.find(':not(:has(*))').length) {
             li.children('a').append(wrapper.find(':not(:has(*))').append(name));
         } else {
             li.children('a').append(name);
@@ -484,29 +519,26 @@
 
     Styles.prototype.renameStyle = function (oldName, newName) {
         if (this._styles[oldName]) {
-            this._styles.renameProperty(oldName)
+            this._styles.renameProperty(oldName, newName)
         }
-        this._container.find('li[data-name="' + oldName + '"]').attr('data-name', newName).find(':not(:has(*)):not(span)').text(newName);
+        window.localStorage.setItem('savedStyles', JSON.stringify(this._styles));
+        this._container.find('li[data-name="' + oldName + '"]').attr('data-name', newName);
     };
 
     Styles.prototype.removeStyle = function (name) {
         delete this._styles[name];
         this._container.find('li[data-name="' + name + '"]').remove();
-        window.localStorage.setItem('savedStyles', JSON.stringify(this._styles));
-        if (jQuery.isEmptyObject(this._styles)) {
+        this._container.children('a').html('Normal' + '<b class="caret"></b>');
+        console.log(Object.keys(this._styles).length);
+        if (Object.keys(this._styles).length <= 4) {
             $('#deleteStyles').parent().addClass('disabled');
         }
+        window.localStorage.setItem('savedStyles', JSON.stringify(this._styles));
     };
 
     Styles.prototype.removeAllStyles = function () {
         this._container.find('.icon-trash').show();
         this._container.find('.icon-pencil').hide();
-        //this._styles = {};
-        //window.localStorage.setItem('savedStyles', JSON.stringify(this._styles));
-        //extendObject(this._styles, this._defaultStyles);
-        //this._container.find('.style-picker.custom').remove();
-        //$('#deleteStyles').parent().addClass('disabled');
-
     };
 
     Styles.prototype.init = function () {
@@ -515,7 +547,10 @@
             styles = this._styles,
             self = this,
             newStyle,
-            savedStyles = JSON.parse(window.localStorage.getItem('savedStyles'));
+            editing = false,
+            savedStyles = JSON.parse(window.localStorage.getItem('savedStyles')),
+            currentStyle,
+            delDialog = $('.deleteStyleDialog');
 
         for (var style in styles) {
             li = $('<li class="style-picker" data-name="' + style + '"><span></span><a></a></li>');
@@ -523,19 +558,24 @@
                 li.addClass('custom');
                 li.append($('<span class="icon-pencil"></span><span class="icon-trash"></span>'));
             }
-            li.children('a').append($(styles[style]).clone().append(style));
+            li.children('a').append(style);
+            li.children('a').contents().wrapAll($(styles[style]));
             ul.append(li);
         }
 
         ul.find('li[data-name="Normal"] > span').addClass('icon-check');
         ul.find(':first').appendTo(ul);
         ul.find('#saveStyles').on('click', function (e) {
-            newStyle = prompt('Enter a new style name please', 'untitled');
+            editing = true;
+            newStyle = 'untitled';
             if (newStyle) {
                 self.addStyle(newStyle);
             }
-            e.stopPropagation();
-            e.preventDefault();
+            $('.custom:last .icon-pencil').addClass('active');
+            $('.custom:last').children('a').attr('contenteditable', true).focus();
+
+            event.stopPropagation();
+            event.preventDefault();
             return false;
         });
         ul.find('#deleteStyles').on('click', function (e) {
@@ -544,7 +584,8 @@
             e.preventDefault();
             return false;
         });
-        if (jQuery.isEmptyObject(savedStyles)) {
+
+        if (Object.keys(this._styles).length <= 4) {
             $('#deleteStyles').parent().addClass('disabled');
         }
 
@@ -553,26 +594,71 @@
             e.preventDefault();
             return false;
         });
+
         ul.on('click', '.custom .icon-trash', function (event) {
+            currentStyle = this;
             event.stopPropagation();
-            self.removeStyle($(this).parent().data('name'));
+            delDialog.appendTo($(this).parent());
+            delDialog.show();
+
+            delDialog.on('click', '.deleteBtn', function () {
+                self.removeStyle($(currentStyle).parent().attr('data-name'));
+                $('.deleteStyleDialog').hide();
+                if (Object.keys(self._styles).length <= 4) {
+                    $('#deleteStyles').parent().addClass('disabled');
+                }
+                event.preventDefault();
+                return false;
+            });
+            delDialog.on('click', '.cancelBtn', function () {
+                $('.deleteStyleDialog').hide();
+                event.preventDefault();
+                return false;
+            });
             event.preventDefault();
             return false;
         });
+
         ul.on('click', '.custom .icon-pencil', function (event) {
-            event.stopPropagation();
-            newStyle = prompt('Enter a new style name please', 'untitled');
-            if (newStyle) {
-                self.renameStyle($(this).parent().data('name'), newStyle);
+            if ($(this).hasClass('active')) {
+                self.renameStyle($(this).parents('.style-picker').attr('data-name'), $(this).prev('a').text());
+                $(this).removeClass('active');
+                $(this).parent().children('a').attr('contenteditable', false);
+                editing = false;
+            } else {
+                $(this).addClass('active');
+                editing = true;
+                $(this).parent().children('a').attr('contenteditable', true).focus();
             }
+            event.stopPropagation();
             event.preventDefault();
             return false;
         });
+
         ul.on('click', '.style-picker', function () {
-            self._container.children('a').html($(this).data('name') + '<b class="caret"></b>');
+            self._container.children('a').html($(this).attr('data-name') + '<b class="caret"></b>');
             $(this).parent().find('.icon-check').removeClass('icon-check');
             $(this).children('span:first-child').addClass('icon-check');
-            self.stylize($(this).data('name'));
+            self.stylize($(this).attr('data-name'));
+        });
+
+        ul.on('click', '.style-picker a', function (e) {
+            if (editing) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+            }
+        });
+
+        ul.on('keypress', '.style-picker a', function (e) {
+            if (e.which == 13) {
+                self.renameStyle($(this).parent().attr('data-name'), $(this).text());
+                $(this).parent().children('.icon-pencil').removeClass('active');
+                $(this).attr('contenteditable', false);
+                editing = false;
+                e.stopPropagation();
+                e.preventDefault();
+                return false;
+            }
         });
         $('.styles > a').click(function () {
             self._container.find('.icon-pencil').show();
@@ -586,24 +672,155 @@
     drawColorPalette($('.color-palette').eq(0));
     drawColorPalette($('.color-palette').eq(1), true);
 
-    $('.add-link-input').on('change', function () {
-        setTimeout(function () {
-            $('.transcript a').each(function () {
-                $(this).attr('target', '_blank');
-            })
-        }, 0);
+    $('.add-link-input').keypress(function (e) {
+        if (e.which == 13) {
+            if (lastLink) {
+                $(lastLink).attr('href', $('.add-link-input').val());
+                $('.add-link-input').val('');
+                lastLink = null;
+                e.stopPropagation();
+                e.preventDefault();
+                return false;
+            }
+            setTimeout(function () {
+                $('.transcript a').each(function () {
+                    $(this).attr('target', '_blank');
+                })
+            }, 0);
+        }
+        //e.stopPropagation();
+    });
+
+    editor.on('mouseup', function (e) {
+        //currentRange = getCurrentRange();
+    });
+
+    //
+    $('.button-toolbar').on('mouseover', '.dropdown-toggle', function () {
+        //currentRange = getCurrentRange();
+    });
+
+    editor.on('click', function () {
+        refreshProps();
     });
 
     $(window).on('load', function () {
         initColorPick();
         editor.wysiwyg();
 
-        //$('#slider1, #slider2').slider({
-        //    orientation: 'horizontal',
-        //    range: 'max',
-        //    max: 255,
-        //    value: 255
-        //});
+        $('body').append($('#button-toolbar'));
+
+        $('#slider1, #slider2').slider({
+            orientation: 'horizontal',
+            range: 'max',
+            max: 100,
+            value: 100,
+            change: refreshOpacity
+        });
+        $('.color-palette input[type="text"]').on('change', function (e) {
+            $(this).next().slider("option", "value", $(this).val());
+        });
+        $('.color-palette input[type="text"]').on('click', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+
+        })
     });
 
+
+    function refreshOpacity(e, ui) {
+        var indicator = $(ui.handle).parents('.color-palette').children('input');
+        indicator.val(ui.value);
+        setOpacity(ui.value / 100);
+
+    }
+
+    function setOpacity(value) {
+        var anchorNode = window.getSelection().anchorNode,
+            focusNode = window.getSelection().focusNode,
+            selection = window.getSelection(),
+            selectedText,
+            text,
+            start,
+            end,
+            startText,
+            endText,
+            startId,
+            endId,
+            content,
+            bookmarkNode,
+            bookmarkBody,
+            selectedRange = document.createRange(),
+            spanRe = /<span style="opacity:\d+px">([\s\w\S\W.]+)<\/span>/;
+
+
+        if (selection.toString().length) {
+            text = $(selection.anchorNode.parentNode).html();
+
+            start = window.getSelection().getRangeAt(0).startOffset;
+            end = window.getSelection().getRangeAt(0).endOffset;
+
+            startId = $(selection.anchorNode).parents('.oneBookmark').data('bookmarkid');
+            endId = $(selection.focusNode).parents('.oneBookmark').data('bookmarkid') || $(selection.focusNode).prev().children(':last-child').data('bookmarkid') + 1;
+
+            for (var i = startId + 1; i <= endId - 1; i++) {
+                bookmarkNode = $('.oneBookmark[data-bookmarkid=' + i + '] .bookmarkBody');
+                bookmarkBody = bookmarkNode.html();
+                if (bookmarkBody.match(spanRe)) {
+                    bookmarkBody = bookmarkBody.replace(spanRe, bookmarkBody.match(spanRe)[1]);
+                }
+                content = '<span style="opacity:' + value + '">' + bookmarkBody + '</span>';
+
+                bookmarkNode.html(content);
+            }
+
+            //    Need to change
+            if (startId != endId) {
+                bookmarkNode = $('.oneBookmark[data-bookmarkid=' + startId + '] .bookmarkBody');
+
+                bookmarkBody = bookmarkNode.html();
+                if (bookmarkBody.slice(start).match(spanRe)) {
+                    console.log(bookmarkBody.slice(start).match(spanRe));
+                    bookmarkBody = bookmarkBody.replace(spanRe, bookmarkBody.match(spanRe)[1]);
+                }
+
+                startText = $(window.getSelection().anchorNode).text().slice(start);
+
+                content = bookmarkBody.replace(startText, '<span style="opacity:' + value + '">' + startText);
+                content += '</span>';
+                bookmarkNode.html(content);
+                //------------------------------------
+                bookmarkNode = $('.oneBookmark[data-bookmarkid=' + endId + '] .bookmarkBody');
+
+                bookmarkBody = bookmarkNode.html();
+                if (bookmarkBody.match(spanRe)) {
+                    bookmarkBody = bookmarkBody.replace(spanRe, bookmarkBody.match(spanRe)[1]);
+                }
+
+                endText = $(window.getSelection().focusNode).text().slice(0, end);
+
+                content = bookmarkBody.replace(endText, endText + '</span>');
+                content = '<span style="opacity:' + value + '">' + content;
+                bookmarkNode.html(content);
+
+            } else {
+                bookmarkNode = $('.oneBookmark[data-bookmarkid=' + startId + '] .bookmarkBody');
+
+                bookmarkBody = bookmarkNode.html();
+                if (bookmarkBody.match(spanRe)) {
+                    bookmarkBody = bookmarkBody.replace(spanRe, bookmarkBody.match(spanRe)[1]);
+                }
+
+                startText = $(window.getSelection().anchorNode).parents('.bookmarkBody').text().slice(start, (start > end) ? (start + end) : end);
+
+                content = bookmarkBody.replace(startText, '<span style="opacity:' + value + '">' + startText + '</span>');
+                bookmarkNode.html(content);
+            }
+        }
+        selectedRange.setStart(window.getSelection().anchorNode, 1);
+        selectedRange.setEnd(window.getSelection().focusNode, 1);
+        selection.removeAllRanges();
+        selection.addRange(selectedRange);
+
+    }
 }());
